@@ -1,0 +1,72 @@
+Basically the first collision after hashing 2n/2 items, or 2^64 for MD5.
+
+2^64 is a big number. If there are 100 billion urls on the web, and we MD5'd them all, would we see a collision? Well no, since 100,000,000,000 is way less than 2^64:
+
+264	18,446,744,073,709,551,616
+237	100,000,000,000
+For a 16-bit hash, our 2n/2 is a whopping 256; for a 32-bit hash it'd be 65,536. It's pretty clear that URL shortening services can't rely on traditional hashing techniques, at least not if they want to produce competitively small URLs.
+
+HASH FUNCTION 
+ Let's say each character is simple alphanumeric, case sensitive A-Z, a-z, 0-9. You can do somewhat better because more ASCII characters than that are valid in URLs, but let's stick with this for the sake of argument. That's 26 + 26 + 10 or 62 possibilities per character. So with a three character URL, we can represent...
+
+62 * 62 * 62 = 238,328
+62 * 62 * 62 * 62 * 62 * 62 = 56.8 billion
+7 times ----> 3.5 trillion
+8 times ----> 218 trillion
+
+... about 250,000 unique three-character short URLs. Beyond that, they'd be forced to move to four character representations. Assuming, of course, that the old URLs never expire.
+
+MurmurHash is a non-cryptographic hash function suitable for general hash-based lookup.
+Unlike cryptographic hash functions, it is not specifically designed to be difficult to reverse by an adversary, making it unsuitable for cryptographic purposes.
+MurmurHash3_32 produces hash key of length 8 characters. Which means a lot of unique combinations possible .
+
+
+URL SHORTNER EXPLAINATION :
+	Get API - which takes the short url as input and return an object containing the corresponding longer url if it is active otherwise null is returned.
+				It also keeps the record of number of hits of particular URL.
+				DB also contains the record of last hit time of URL.
+	POST API -  Input - List containing longUrls and its and number of expiry days in which url to be expired.
+				Output - Return an object containing two lists.
+						Success - Contains those URLs which are successfully stored in DB and their corresponding Hash Key is generated.
+						Failed  - Contains those URLs which are unable to generate a hash key along with message containing reason of failure. 
+				Internal Logic - 
+					Do some encryption and store the short url in DB.
+					Validate the Url weather the URL contains the domain name of makaan or not.
+					Generate Hash Key using Murmur3_32 Hash Function.
+						It generates a key of length 8 characters
+						Input string to murmur hash is LongUrl + Timestamp + Random No.
+					Checks in DB if the generated hash key is active or not.
+					If active again generates the hash.
+					else store in DB and return the object.
+
+
+
+TASKS
+	- CREATE DB
+	- Create Migration
+	- URL Validation
+	- Hash Key Generation
+	- GET API
+	- POST API
+
+
+
+				 	do encryption and store it in DB.
+				 	Domain name append ????
+				- URL Validation								DONE
+					regex
+				-Collision Handling 							DONE
+				-Hash Encryption Logic							DONE
+					longUrl+timestamp->murmurhash function
+				- ADD EXPIRY as parameter						DONE
+				- Use URI to extract domain.                    
+				
+
+CREATE TABLE user_otp_attempts (
+  user_id int(11) NOT NULL AUTO_INCREMENT,
+  attempts int NOT NULL,
+  last_modified datetime NOT NULL,
+  PRIMARY KEY (user_id)
+);
+
+

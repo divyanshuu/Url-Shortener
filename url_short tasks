@@ -1,0 +1,245 @@
+
+SUB TASKS
+
+create DB 
+	id, long_url, short_url,timestamp, expiry, count
+	Indexing - (short_url,expiry)
+	Migrations for DB
+		
+
+Create an Entity Class.   To be moved to core...
+Create controller
+	Get API - which takes the short url as input and return an object with db data .
+				every time when the url hits increment the count in DB .
+	POST API - which takes long url and no. of days for expiry and do some encryption and store the short url in DB.
+				checks in db whether long_url alraedy exists or not.
+				 if(exists)
+				 	return the object
+				 else 
+				 	do encryption and store it in DB.
+				 	Domain name append ????
+				- URL Validation								DONE
+					regex
+				-Collision Handling 							DONE
+				-Hash Encryption Logic							DONE
+					longUrl+timestamp->murmurhash function
+				- ADD EXPIRY as parameter						DONE
+				- Use URI to extract domain.                    
+				
+
+
+Create Service 
+Create Dao
+
+
+
+
+
+
+
+
+/^(?:http(?:s)?:\\/\\/)?(?:[^\\.]+\\.)?makaan\\.com(?:/.*)?$/
+
+.*makaan.com.*
+
+
+def up
+      execute "CREATE TABLE `call_log_entity_mapping` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `data_type_id` int(11) NOT NULL,
+  `data_id` int(11) NOT NULL,
+  `call_log_id` int(11) NOT NULL,
+  `extra_attribute` text,
+  `created_at` datetime NOT NULL,
+  PRIMARY KEY (`id`)
+) "
+  end
+
+  def down
+       execute "drop table call_log_entity_mapping"
+  end
+
+
+
+BEFORE DOING COMMIT
+change the database in Petrarails/config/database.yml
+
+
+--------------------------------------------
+SERVICE
+
+package com.proptiger.data.service;
+
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.nio.charset.StandardCharsets;
+import java.sql.Timestamp;
+import java.util.Calendar;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import org.mockito.internal.matchers.Find;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import com.google.common.hash.Hashing;
+import com.proptiger.data.model.UrlShortner;
+import com.proptiger.data.repo.UrlShortnerDao;
+
+@Service
+public class UrlShortnerService {
+	
+    private static Logger       logger         = LoggerFactory.getLogger(UrlShortnerService.class);
+
+
+	@Autowired
+	public UrlShortnerDao urlShortnerDao;
+	
+//	public static String getDomainName(String url) throws URISyntaxException {
+//	    URI uri = new URI(url);
+//	    String domain = uri.getHost();
+//	    return domain.startsWith("www.") ? domain.substring(4) : domain;
+//	}
+	
+	public UrlShortner setShortUrl(String longUrl,int exp)
+	{
+		
+		Pattern p = Pattern.compile(".*makaan.com.*");
+		 Matcher m = p.matcher(longUrl);
+		 boolean b = m.matches();
+//		String domain = "";	
+//		 try {
+//			 URI uri = new URI(longUrl);
+//			 domain = uri.getHost();
+//			 if(domain.startsWith("www."))
+//				 domain= domain.substring(4);
+//		//	 domain = getDomainName(longUrl); 
+//		 }
+//		 catch (Exception e) {
+//			// TODO: handle exception
+//			 logger.error("Invalid Url: "+longUrl);
+//		}
+		 
+	//	 if(domain=="makaan.com")
+		 if(b)
+		 {
+			 Timestamp timestamp=new Timestamp(System.currentTimeMillis());
+			 Timestamp expiry = timestamp;
+			 String shortUrl="";
+			 for(int i=0;i<3;i++)
+			 {
+				  timestamp = new Timestamp(System.currentTimeMillis());
+				  expiry = timestamp;
+				 Calendar cal = Calendar.getInstance();
+				 cal.setTimeInMillis(expiry.getTime());
+				 cal.add(Calendar.DAY_OF_MONTH, exp);
+				 expiry = new Timestamp(cal.getTime().getTime());
+				
+				 String inputUrl = longUrl+timestamp.toString();
+				  shortUrl = Hashing.murmur3_32()
+			        .hashString(inputUrl, StandardCharsets.UTF_8).toString();
+				 //Checks in DB if collisions occurs
+				 UrlShortner us = urlShortnerDao.checkShortUrl(shortUrl);
+		//		  UrlShortner us = urlShortnerDao.findByShortUrl(shortUrl);
+				 
+				 if(us==null)
+					 break;	 
+			 }
+			 UrlShortner urlshortner = new UrlShortner(longUrl,shortUrl,timestamp,expiry,0);
+			 urlShortnerDao.save(urlshortner);
+			 return urlshortner;
+			 
+		 }
+		 else {
+			 logger.error("Invalid Url: " + longUrl);
+			 return null;
+		 }
+	}
+	public UrlShortner getLongUrl(String shortUrl)
+	{
+		Timestamp timestamp = new Timestamp(System.currentTimeMillis());
+	//	UrlShortner uShortner = urlShortnerDao.findByShortUrlAndExpiryGreaterThanOrderByCreatedAtAsc(shortUrl, timestamp);
+		UrlShortner uShortner = urlShortnerDao.getLongUrl(shortUrl, timestamp);
+		if(uShortner==null)
+		{
+			logger.error("Url Not Found " +shortUrl);
+			return null;
+		}
+		int hitCount = uShortner.getCount() + 1;
+		uShortner.setCount(hitCount);
+		//update No. of hits 
+		urlShortnerDao.save(uShortner);
+	//	urlShortnerDao.updateCount(shortUrl);
+		
+	//	UrlShortner urlShortner = urlShortnerDao.getLongUrl(shortUrl, timestamp);
+//		if(urlShortner==null)
+//		{
+//			logger.error("Url Not Found " +shortUrl);
+//		}
+		return(uShortner);
+		
+	}
+}
+====================================================
+DAO
+
+package com.proptiger.data.repo;
+
+
+import java.sql.Timestamp;
+import java.util.List;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.transaction.annotation.Transactional;
+import com.proptiger.data.model.UrlShortner;
+
+public interface UrlShortnerDao extends JpaRepository<UrlShortner, Integer> {
+
+	@Query(value = "SELECT us FROM UrlShortner us WHERE us.shortUrl=?1")
+	public UrlShortner checkShortUrl(String shortUrl);
+	
+	@Transactional
+	@Modifying
+	@Query(value = "UPDATE UrlShortner us SET us.count = us.count + 1 WHERE us.shortUrl = ?1")
+	public void updateCount(String shortUrl);
+	
+	@Query(value = "SELECT us FROM UrlShortner us WHERE us.shortUrl=?1 AND us.expiry > ?2")
+	public UrlShortner getLongUrl(String shortUrl,Timestamp t);
+	
+//	public UrlShortner findByShortUrl(String shortUrl);
+//	public UrlShortner findByShortUrlAndExpiryGreaterThanOrderByCreatedAtAsc(String shortUrl,Timestamp t);
+	
+}
+============================================================
+//		Pattern p = Pattern.compile(".*makaan.com.*");
+//		 Matcher m = p.matcher(longUrl);
+//		 boolean b = m.matches();
+
+	@Query(value = "SELECT us FROM UrlShortner us WHERE us.shortUrl=?1")
+	public UrlShortner checkShortUrl(String shortUrl);
+	
+	@Transactional
+	@Modifying
+	@Query(value = "UPDATE UrlShortner us SET us.hitCount = us.hitCount + 1 WHERE us.shortUrl = ?1")
+	public void updateCount(String shortUrl);
+	
+	@Query(value = "SELECT us FROM UrlShortner us WHERE us.shortUrl=?1 AND us.expiry > ?2")
+	public UrlShortner getLongUrl(String shortUrl,Timestamp t);
+
+
+	UrlShortner to be moved to core .
+	Domain Name to be more clean
+	LastAccessTime - null at time of post
+				   - update only at get.
+	Reduce HitCount variable
+
+	Reduce 
+
+	15	ftp://makaan.com/dis/rewqknjkt	ecd8712e	2018-05-09 12:09:44	2018-05-16 12:09:44	0	NULL
+
+
+
+====================================================

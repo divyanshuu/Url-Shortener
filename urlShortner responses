@@ -1,0 +1,85 @@
+
+URL SHORTENER
+DATABASE NAME cms
+TABLE - url_shortner
+GET API - beta.makaan-ws.com/petra/data/v1/entity/url-shortener/long-url?shortUrl=b2c399b8
+POST API - https://beta.makaan-ws.com/petra/data/v1/entity/url-shortener/long-to-short
+
+OUTPUT RESPONSE OF POST API
+{
+    "statusCode": "2XX",
+    "version": "A",
+    "data": {
+        "success": [
+            {
+                "longUrl": "http://makaan.com/sdnbsnb/cd/dwwmpio/a",
+                "shortUrl": "b2c399b8",
+                "createdAt": 1526907995644,
+                "expiry": 1526994395644,
+                "hitCount": 0,
+                "campaign": "Featured",
+                "expDays": 1
+            },
+            {
+                "longUrl": "makaan.com/k/sfjforjkjkiu/dg",
+                "shortUrl": "cd81ab5b",
+                "createdAt": 1526907995764,
+                "expiry": 1526994395764,
+                "hitCount": 0,
+                "campaign": null,
+                "expDays": 1
+            }
+        ],
+        "failedUrlList": [
+            {
+                "longUrl": "~/34=@/';;4]u/as",
+                "message": "Invalid Url: java.net.URISyntaxException: Illegal character in path at index 18: http://~/34=@/';;4]u/as"
+            },
+            {
+                "longUrl": "http://makan.com/sfsd/dwwwsl/bm",
+                "message": "Invalid Domain Name: "
+            }
+        ]
+    }
+}
+
+INPUT OF POST API
+
+
+[
+    {
+        "longUrl":"~/34=@/';;4]u/as"
+    },
+    {
+        "longUrl":"http://makaan.com/sdnbsnb/cd/dwwmpio/a",
+        "expDays":1,
+        "campaign":"Featured"
+    },
+    {
+        "longUrl":"http://makan.com/sfsd/dwwwsl/bm",
+        "expDays":1
+    },
+    {
+        "longUrl":"makaan.com/k/sfjforjkjkiu/dg",
+        "expDays":1
+    }
+]
+
+OUTPUT OF GET API
+
+{
+    "statusCode": "2XX",
+    "version": "A",
+    "data": {
+        "longUrl": "http://makaan.com/sdnbsnb/cd/dwwmpio/a",
+        "shortUrl": "b2c399b8",
+        "createdAt": 1526907996000,
+        "expiry": 1526994396000,
+        "hitCount": 2,
+        "campaign": "Featured",
+        "expDays": 7
+    }
+}
+
+
+
